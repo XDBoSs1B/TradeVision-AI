@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TradeVision AI</title>
+<style>
+  :root{
+    --bg: #0B0F14;
+    --surface: #131A22;
+    --surface-2: #1B242E;
+    --border: #253140;
+    --accent: #2DD4BF;
+    --up: #34D399;
+    --down: #F87171;
+    --wait: #FBBF24;
+    --text: #E5EDF5;
+    --muted: #7C8B9B;
+  }
+  *{ box-sizing: border-box; margin:0; padding:0; }
+  html,body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  @font-face{
+    font-family:'Space Grotesk';
+    src: local('Space Grotesk');
+  }
+  .app{
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display:flex;
+    flex-direction: column;
+    padding: 24px 20px 40px;
+  }
+  header{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom: 28px;
+  }
+  .logo-mark{
+    width:36px;height:36px;
+    border-radius:9px;
+    background: linear-gradient(135deg, var(--accent), #1a8f82);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:16px;
+    color:#04211d;
+    flex-shrink:0;
+  }
+  .brand{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:-0.02em;
+  }
+  .brand span{ color: var(--accent); }
+  .tagline{
+    font-size:11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .upload-zone{
+    position:relative;
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    min-height: 220px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap: 10px;
+    cursor:pointer;
+    overflow:hidden;
+    transition: border-color .2s ease;
+  }
+  .upload-zone:active{ border-color: var(--accent); }
+  .upload-zone img{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit: cover;
+  }
+  .upload-icon{
+    width:44px;height:44px;
+    border-radius:50%;
+    background: var(--surface-2);
+    display:flex;align-items:center;justify-content:center;
+    color: var(--accent);
+  }
+  .upload-text{ font-size:14px; font-weight:600; }
+  .upload-sub{ font-size:12px; color:var(--muted); }
+  #fileInput{ display:none; }
+
+  .scan-overlay{
+    position:absolute; inset:0;
+    display:none;
+    background: rgba(11,15,20,0.35);
+  }
+  .scan-line{
+    position:absolute;
+    left:0; right:0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent) 20%, var(--accent) 80%, transparent);
+    box-shadow: 0 0 12px 2px var(--accent);
+    animation: sweep 1.6s linear infinite;
+  }
+  @keyframes sweep{
+    0%{ top: -2px; }
+    100%{ top: 100%; }
+  }
+
+  .scan-btn{
+    margin-top: 16px;
+    width:100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: #04211d;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+    cursor:pointer;
+  }
+  .scan-btn:disabled{
+    background: var(--surface-2);
+    color: var(--muted);
+  }
+  .scan-btn:active:not(:disabled){ transform: scale(0.98); }
+
+  .results{
+    margin-top: 24px;
+    display:none;
+  }
+  .badge-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .selector-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .selector{
+    position:relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .selector-label{
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 3px;
+  }
+  .selector select{
+    width:100%;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13.5px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .selector::after{
+    content: "";
+    position:absolute;
+    right:12px; top: 26px;
+    width:0; height:0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--muted);
+  }
+  .val-confidence-low{ color: var(--down); }
+  .val-confidence-moderate{ color: var(--wait); }
+  .val-confidence-high{ color: var(--up); }
+  .badge{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align:center;
+  }
+  .badge-label{
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .badge-value{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .val-up{ color: var(--up); }
+  .val-down{ color: var(--down); }
+  .val-wait, .val-neutral, .val-medium{ color: var(--wait); }
+  .val-low{ color: var(--up); }
+  .val-high{ color: var(--down); }
+
+  .reason-card{
+    margin-top: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .reason-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+  }
+  .reason-list{
+    list-style: none;
+    display:flex;
+    flex-direction:column;
+    gap: 9px;
+  }
+  .reason-list li{
+    font-size: 13.5px;
+    line-height: 1.5;
+    padding-left: 16px;
+    position:relative;
+    color: var(--text);
+  }
+  .reason-list li::before{
+    content: "";
+    position:absolute;
+    left:0; top:7px;
+    width:6px;height:6px;
+    border-radius:1px;
+    background: var(--accent);
+    transform: rotate(45deg);
+  }
+
+  .disclaimer{
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+    text-align:center;
+    padding: 0 8px;
+  }
+
+  .error-box{
+    margin-top: 16px;
+    background: rgba(248,113,113,0.08);
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--down);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    display:none;
+  }
+
+  .loading-label{
+    text-align:center;
+    font-size: 12px;
+    color: var(--accent);
+    margin-top: 10px;
+    display:none;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo-mark">TV</div>
+      <div>
+        <div class="brand">TradeVision <span>AI</span></div>
+        <div class="tagline">Chart Analysis Assistant</div>
+      </div>
+    </header>
+
+    <div class="selector-row">
+      <div class="selector">
+        <div class="selector-label">Market</div>
+        <select id="marketSelect">
+          <option value="Crypto">Crypto</option>
+          <option value="Forex">Forex</option>
+          <option value="Stocks">Stocks</option>
+          <option value="Indices">Indices</option>
+          <option value="Commodities">Commodities</option>
+        </select>
+      </div>
+      <div class="selector">
+        <div class="selector-label">Timeframe</div>
+        <select id="timeframeSelect">
+          <option value="1m">1 Minute</option>
+          <option value="5m">5 Minute</option>
+          <option value="15m" selected>15 Minute</option>
+          <option value="30m">30 Minute</option>
+          <option value="1h">1 Hour</option>
+          <option value="4h">4 Hour</option>
+          <option value="1d">1 Day</option>
+          <option value="1w">1 Week</option>
+        </select>
+      </div>
+    </div>
+    <div class="selector-row" style="grid-template-columns: 1fr;">
+      <div class="selector">
+        <div class="selector-label">Symbol</div>
+        <select id="symbolSelect"></select>
+      </div>
+    </div>
+
+    <label class="upload-zone" id="uploadZone" for="fileInput">
+      <input type="file" id="fileInput" accept="image/*">
+      <div id="uploadPlaceholder">
+        <div class="upload-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4"/>
+            <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/>
+          </svg>
+        </div>
+        <div class="upload-text">Upload chart screenshot</div>
+        <div class="upload-sub">Tap to choose an image</div>
+      </div>
+      <img id="previewImg" style="display:none;">
+      <div class="scan-overlay" id="scanOverlay">
+        <div class="scan-line"></div>
+      </div>
+    </label>
+
+    <button class="scan-btn" id="scanBtn" disabled>Upload a chart to begin</button>
+    <div class="loading-label" id="loadingLabel">ANALYZING CHART…</div>
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="results" id="results">
+      <div class="badge-row">
+        <div class="badge">
+          <div class="badge-label">Direction</div>
+          <div class="badge-value" id="valDirection">—</div>
+        </div>
+        <div class="badge">
+          <div class="badge-label">Trend</div>
+          <div class="badge-value" id="valTrend">—</div>
+        </div>
+        <div class="badge">
+          <div class="badge-label">Confidence</div>
+          <div class="badge-value" id="valConfidence">—</div>
+        </div>
+        <div class="badge">
+          <div class="badge-label">Risk</div>
+          <div class="badge-value" id="valRisk">—</div>
+        </div>
+      </div>
+      <div class="reason-card">
+        <div class="reason-title">Why this result</div>
+        <ul class="reason-list" id="reasonList"></ul>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      TradeVision AI is an analysis assistant, not a guarantee. It does not predict market outcomes with certainty. Always confirm with your own research before trading.
+    </div>
+  </div>
+
+<script>
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const previewImg = document.getElementById('previewImg');
+  const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+  const scanBtn = document.getElementById('scanBtn');
+  const results = document.getElementById('results');
+  const scanOverlay = document.getElementById('scanOverlay');
+  const loadingLabel = document.getElementById('loadingLabel');
+  const errorBox = document.getElementById('errorBox');
+
+  let base64Image = null;
+  let mediaType = null;
+
+  const symbolsByMarket = {
+    Crypto: ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "DOGE/USDT", "ADA/USDT", "AVAX/USDT", "LINK/USDT", "MATIC/USDT", "LTC/USDT", "TRX/USDT", "DOT/USDT", "SHIB/USDT", "AAVE/USDT", "UNI/USDT", "ATOM/USDT", "ETC/USDT", "XLM/USDT", "NEAR/USDT"],
+    Forex: ["EUR/USD", "GBP/USD", "USD/JPY", "AUD/USD", "USD/CAD", "NZD/USD", "USD/CHF", "EUR/GBP", "EUR/JPY", "GBP/JPY", "AUD/CAD", "AUD/CHF", "AUD/JPY", "AUD/NZD", "AUD/SGD", "CAD/JPY", "CHF/JPY", "EUR/AUD", "EUR/CAD", "EUR/CHF", "GBP/AUD", "GBP/CAD", "GBP/CHF", "NZD/JPY", "USD/ZAR", "USD/SEK", "USD/NOK", "USD/TRY", "USD/MXN", "USD/SGD"],
+    Stocks: ["AAPL", "TSLA", "AMZN", "GOOGL", "MSFT", "NVDA", "META", "NFLX", "AMD", "INTC", "BA", "DIS", "PYPL", "KO", "PEP", "V", "MA", "JPM", "WMT", "XOM"],
+    Indices: ["NAS100", "SPX500", "US30", "GER40", "UK100", "JPN225", "AUS200", "FRA40", "HK50", "EU50"],
+    Commodities: ["XAU/USD (Gold)", "XAG/USD (Silver)", "WTI Crude Oil", "Brent Crude Oil", "Natural Gas", "Copper", "Platinum", "Palladium", "Coffee", "Wheat"]
+  };
+
+  const marketSelect = document.getElementById('marketSelect');
+  const symbolSelect = document.getElementById('symbolSelect');
+
+  function populateSymbols(){
+    const symbols = symbolsByMarket[marketSelect.value] || [];
+    symbolSelect.innerHTML = symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+  marketSelect.addEventListener('change', populateSymbols);
+  populateSymbols();
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    mediaType = file.type;
+    const reader = new FileReader();
+    reader.onload = () => {
+      base64Image = reader.result.split(',')[1];
+      previewImg.src = reader.result;
+      previewImg.style.display = 'block';
+      uploadPlaceholder.style.display = 'none';
+      scanBtn.disabled = false;
+      scanBtn.textContent = 'Scan Chart';
+      results.style.display = 'none';
+      errorBox.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  scanBtn.addEventListener('click', async () => {
+    if (!base64Image) return;
+    scanBtn.disabled = true;
+    scanBtn.textContent = 'Scanning…';
+    scanOverlay.style.display = 'block';
+    loadingLabel.style.display = 'block';
+    results.style.display = 'none';
+    errorBox.style.display = 'none';
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image",
+                  source: { type: "base64", media_type: mediaType, data: base64Image }
+                },
+                {
+                  type: "text",
+                  text: `You are a trading chart analysis assistant. The user has selected Market: ${document.getElementById('marketSelect').value}, Symbol: ${document.getElementById('symbolSelect').value}, Timeframe: ${document.getElementById('timeframeSelect').value}. Look at this chart screenshot and respond with ONLY a raw JSON object, no markdown fences, no preamble, in exactly this shape:
+{
+  "direction": "UP" | "DOWN" | "WAIT",
+  "trend": "Bullish" | "Bearish" | "Neutral",
+  "confidence": "Low" | "Moderate" | "High",
+  "risk": "Low" | "Medium" | "High",
+  "reasons": ["short reason 1", "short reason 2", "short reason 3"]
+}
+Be conservative: if the chart is unclear or confirmation is weak, prefer WAIT, Low/Moderate confidence, and Medium/High risk. Never claim certainty, and never imply a specific win-rate or percentage accuracy. Base the reasons only on what is visibly present in the chart (candle structure, trend lines, visible indicators, volatility) and reference the selected timeframe context where relevant.`
+                }
+              ]
+            }
+          ]
+        })
+      });
+
+      const data = await response.json();
+      const rawText = data.content.map(b => b.text || "").join("").trim();
+      const cleaned = rawText.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      document.getElementById('valDirection').textContent = parsed.direction;
+      document.getElementById('valDirection').className = 'badge-value val-' + parsed.direction.toLowerCase();
+
+      document.getElementById('valTrend').textContent = parsed.trend;
+      document.getElementById('valTrend').className = 'badge-value val-' + parsed.trend.toLowerCase();
+
+      document.getElementById('valConfidence').textContent = parsed.confidence;
+      document.getElementById('valConfidence').className = 'badge-value val-confidence-' + parsed.confidence.toLowerCase();
+
+      document.getElementById('valRisk').textContent = parsed.risk;
+      document.getElementById('valRisk').className = 'badge-value val-' + parsed.risk.toLowerCase();
+
+      const list = document.getElementById('reasonList');
+      list.innerHTML = '';
+      parsed.reasons.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        list.appendChild(li);
+      });
+
+      results.style.display = 'block';
+    } catch (err) {
+      errorBox.textContent = "Analysis failed. Please try again with a clearer chart image.";
+      errorBox.style.display = 'block';
+      console.error(err);
+    } finally {
+      scanOverlay.style.display = 'none';
+      loadingLabel.style.display = 'none';
+      scanBtn.disabled = false;
+      scanBtn.textContent = 'Scan Chart';
+    }
+  });
+</script>
+</body>
+</html>
