@@ -43,6 +43,78 @@
     gap:10px;
     margin-bottom: 28px;
   }
+  .header-spacer{ flex:1; }
+  .history-btn{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    cursor: pointer;
+  }
+  .history-panel{
+    display:none;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .history-panel-header{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    margin-bottom: 10px;
+  }
+  .history-panel-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:14px;
+  }
+  .history-clear-btn{
+    background:none;
+    border:none;
+    color: var(--down);
+    font-size: 11px;
+    text-decoration: underline;
+  }
+  .history-empty{
+    color: var(--muted);
+    font-size: 12px;
+    text-align:center;
+    padding: 14px 0;
+  }
+  .history-item{
+    border-top: 1px solid var(--border);
+    padding: 10px 0;
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    gap: 8px;
+  }
+  .history-item-info{
+    flex:1;
+  }
+  .history-item-symbol{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:13px;
+  }
+  .history-item-meta{
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .history-item-direction{
+    font-weight:700;
+    font-size:12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
   .logo-mark{
     width:44px;height:44px;
     border-radius:10px;
@@ -255,6 +327,41 @@
     background: var(--accent);
     transform: rotate(45deg);
   }
+  .lesson-card{
+    margin-top: 14px;
+    background: linear-gradient(145deg, rgba(45,212,191,0.06), var(--surface));
+    border: 1px solid rgba(45,212,191,0.25);
+    border-radius: 14px;
+    padding: 16px;
+  }
+  .lesson-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .lesson-item{
+    margin-bottom: 10px;
+  }
+  .lesson-item:last-child{ margin-bottom:0; }
+  .lesson-term{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .lesson-explanation{
+    font-size: 13px;
+    line-height:1.5;
+    color: var(--muted);
+    margin-top: 2px;
+  }
 
   .disclaimer{
     margin-top: 16px;
@@ -295,7 +402,17 @@
         <div class="brand">TradeVision <span>AI</span></div>
         <div class="tagline">Chart Analysis Assistant</div>
       </div>
+      <div class="header-spacer"></div>
+      <button class="history-btn" id="historyToggleBtn">History</button>
     </header>
+
+    <div class="history-panel" id="historyPanel">
+      <div class="history-panel-header">
+        <div class="history-panel-title">Scan History</div>
+        <button class="history-clear-btn" id="clearHistoryBtn">Clear All</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
 
     <div class="selector-row">
       <div class="selector">
@@ -374,6 +491,10 @@
         <div class="reason-title">Why this result</div>
         <ul class="reason-list" id="reasonList"></ul>
       </div>
+      <div class="lesson-card">
+        <div class="lesson-title">📚 Learn From This Chart</div>
+        <div id="lessonList"></div>
+      </div>
     </div>
 
     <div class="disclaimer">
@@ -413,6 +534,69 @@
   marketSelect.addEventListener('change', populateSymbols);
   populateSymbols();
 
+  // ---- History feature ----
+  const HISTORY_KEY = 'tradevision_history';
+  const historyPanel = document.getElementById('historyPanel');
+  const historyList = document.getElementById('historyList');
+  const historyToggleBtn = document.getElementById('historyToggleBtn');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+  function getHistory(){
+    try {
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    } catch(e){ return []; }
+  }
+
+  function saveToHistory(parsed){
+    try {
+      const entries = getHistory();
+      const now = new Date();
+      entries.unshift({
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        market: marketSelect.value,
+        symbol: symbolSelect.value,
+        timeframe: timeframeSelect.options[timeframeSelect.selectedIndex].text,
+        direction: parsed.direction,
+        trend: parsed.trend,
+        confidence: parsed.confidence,
+        risk: parsed.risk
+      });
+      // Keep only the most recent 50 entries
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(entries.slice(0, 50)));
+      renderHistory();
+    } catch(e){ console.error('History save failed', e); }
+  }
+
+  function renderHistory(){
+    const entries = getHistory();
+    if (entries.length === 0){
+      historyList.innerHTML = '<div class="history-empty">No scans yet. Your scan history will appear here.</div>';
+      return;
+    }
+    historyList.innerHTML = entries.map(e => `
+      <div class="history-item">
+        <div class="history-item-info">
+          <div class="history-item-symbol">${e.symbol} · ${e.timeframe}</div>
+          <div class="history-item-meta">${e.date} ${e.time} · ${e.market} · Trend: ${e.trend} · Risk: ${e.risk}</div>
+        </div>
+        <div class="history-item-direction val-${e.direction.toLowerCase()}">${e.direction}</div>
+      </div>
+    `).join('');
+  }
+
+  historyToggleBtn.addEventListener('click', () => {
+    const isOpen = historyPanel.style.display === 'block';
+    historyPanel.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) renderHistory();
+  });
+
+  clearHistoryBtn.addEventListener('click', () => {
+    localStorage.removeItem(HISTORY_KEY);
+    renderHistory();
+  });
+
+
   fileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -449,9 +633,13 @@
   "trend": "Bullish" | "Bearish" | "Neutral",
   "confidence": "Low" | "Moderate" | "High",
   "risk": "Low" | "Medium" | "High",
-  "reasons": ["short reason 1", "short reason 2", "short reason 3"]
+  "reasons": ["short reason 1", "short reason 2", "short reason 3"],
+  "lessons": [
+    {"term": "e.g. Bearish Candle", "explanation": "one simple beginner-friendly sentence explaining what this specific candle/pattern visible in THIS chart means and why it formed"},
+    {"term": "e.g. Long Wick", "explanation": "one simple beginner-friendly sentence about another concept visible in this chart"}
+  ]
 }
-Be conservative: if the chart is unclear or confirmation is weak, prefer WAIT, Low/Moderate confidence, and Medium/High risk. Never claim certainty, and never imply a specific win-rate or percentage accuracy. Base the reasons only on what is visibly present in the chart (candle structure, trend lines, visible indicators, volatility) and reference the selected timeframe context where relevant.`;
+Be conservative: if the chart is unclear or confirmation is weak, prefer WAIT, Low/Moderate confidence, and Medium/High risk. Never claim certainty, and never imply a specific win-rate or percentage accuracy. Base the reasons only on what is visibly present in the chart (candle structure, trend lines, visible indicators, volatility) and reference the selected timeframe context where relevant. For "lessons", pick 2-3 concepts actually visible in this specific chart (e.g. why a particular candle went up or down, what a wick means, what the pattern suggests) and explain them simply enough for a complete beginner to learn from, using this exact chart as the example.`;
 
       const modelsToTry = [
         "google/gemma-4-31b-it:free",
@@ -485,7 +673,15 @@ Be conservative: if the chart is unclear or confirmation is weak, prefer WAIT, L
               })
             });
             const json = await response.json();
-            if (json.error) { lastError = new Error(json.error.message); continue; }
+            if (json.error) {
+              lastError = new Error(json.error.message);
+              if (/rate limit/i.test(json.error.message)) {
+                loadingLabel.textContent = "RATE LIMITED — RETRYING IN 15s…";
+                await new Promise(r => setTimeout(r, 15000));
+                loadingLabel.textContent = "ANALYZING CHART…";
+              }
+              continue;
+            }
             if (!json.choices || !json.choices[0]) { lastError = new Error("Empty response"); continue; }
             data = json;
             break;
@@ -531,7 +727,17 @@ Be conservative: if the chart is unclear or confirmation is weak, prefer WAIT, L
         list.appendChild(li);
       });
 
+      const lessonList = document.getElementById('lessonList');
+      lessonList.innerHTML = '';
+      (parsed.lessons || []).forEach(l => {
+        const div = document.createElement('div');
+        div.className = 'lesson-item';
+        div.innerHTML = `<div class="lesson-term">${l.term}</div><div class="lesson-explanation">${l.explanation}</div>`;
+        lessonList.appendChild(div);
+      });
+
       results.style.display = 'block';
+      saveToHistory(parsed);
     } catch (err) {
       errorBox.textContent = "Error details: " + err.message;
       errorBox.style.display = 'block';
